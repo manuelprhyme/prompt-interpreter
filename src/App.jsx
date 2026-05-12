@@ -1,50 +1,19 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
-import { Mic, Scale, Copy, Volume2 } from "lucide-react";
-import { useVoiceConversation } from "@/hooks/useVoiceConversation";
+import { useEffect, useRef, useState } from "react";
+import { Mic, Scale, Copy, Volume2, Pencil, Settings as SettingsIcon } from "lucide-react";
+import { useVoiceConversation } from "@/hooks/useVoiceConversation.js";
+import { useUserProfile } from "@/context/UserProfileContext.jsx";
+import { hasAllKeys } from "@/lib/keys.js";
+import UserProfileModal from "@/components/UserProfileModal.jsx";
+import SettingsDialog from "@/components/SettingsDialog.jsx";
 
-export const Route = createFileRoute("/")({
-  component: Index,
-  head: () => ({
-    meta: [
-      { title: "CourtVoice — Your rights. Your voice." },
-      {
-        name: "description",
-        content:
-          "A fully voice-operated AI legal aid companion. Speak your legal problem and get plain-language rights, drafted letters, and clear next steps.",
-      },
-    ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@400;500;600&display=swap",
-      },
-    ],
-  }),
-});
-
-function StatusRing({
-  isListening,
-  isThinking,
-  isSpeaking,
-  onPointerDown,
-  onPointerUp,
-  disabled,
-}: {
-  isListening: boolean;
-  isThinking: boolean;
-  isSpeaking: boolean;
-  onPointerDown: () => void;
-  onPointerUp: () => void;
-  disabled: boolean;
-}) {
+function StatusRing({ isListening, isThinking, isSpeaking, onPointerDown, onPointerUp, disabled }) {
   const cls = isListening
     ? "mic-listening"
     : isThinking
-      ? "mic-thinking"
-      : isSpeaking
-        ? ""
-        : "mic-idle";
+    ? "mic-thinking"
+    : isSpeaking
+    ? ""
+    : "mic-idle";
 
   return (
     <div className="relative flex flex-col items-center gap-6">
@@ -74,23 +43,42 @@ function StatusRing({
             </span>
           </span>
         )}
-        {!isListening && !isThinking && !isSpeaking && (
-          <span>Press &amp; hold to speak</span>
-        )}
+        {!isListening && !isThinking && !isSpeaking && <span>Press &amp; hold to speak</span>}
       </div>
     </div>
   );
 }
 
-function CourtVoiceApp() {
+export default function App() {
+  const { userProfile } = useUserProfile();
   const v = useVoiceConversation();
-  const feedRef = useRef<HTMLDivElement>(null);
+  const feedRef = useRef(null);
+
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // First load: open settings if missing keys, then onboarding modal.
+  useEffect(() => {
+    if (!hasAllKeys()) {
+      setSettingsOpen(true);
+    } else if (!userProfile.profileComplete) {
+      setProfileOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // After settings closes, if profile not complete, prompt onboarding.
+  useEffect(() => {
+    if (!settingsOpen && hasAllKeys() && !userProfile.profileComplete) {
+      setProfileOpen(true);
+    }
+  }, [settingsOpen, userProfile.profileComplete]);
 
   useEffect(() => {
     feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight, behavior: "smooth" });
   }, [v.messages, v.isThinking]);
 
-  const disabled = v.isSpeaking || v.isThinking;
+  const disabled = v.isSpeaking || v.isThinking || profileOpen || settingsOpen;
 
   return (
     <main className="min-h-screen text-foreground">
@@ -106,21 +94,40 @@ function CourtVoiceApp() {
             </p>
           </div>
         </div>
-        {v.category && (
-          <span className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs uppercase tracking-widest text-primary">
-            {v.category}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {v.category && (
+            <span className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs uppercase tracking-widest text-primary">
+              {v.category}
+            </span>
+          )}
+          {userProfile.profileComplete && (
+            <span className="hidden sm:inline text-xs text-muted-foreground">
+              {userProfile.name}
+            </span>
+          )}
+          <button
+            onClick={() => setProfileOpen(true)}
+            title="Edit profile"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            title="API keys"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary"
+          >
+            <SettingsIcon className="h-4 w-4" />
+          </button>
+        </div>
       </header>
 
       <section className="mx-auto max-w-6xl px-6 grid gap-8 lg:grid-cols-[1.1fr_1fr] pb-16">
         <div className="rounded-2xl border border-border bg-card/60 backdrop-blur p-8 flex flex-col items-center">
-          <h2 className="text-3xl font-serif text-center mb-2">
-            Speak your situation.
-          </h2>
+          <h2 className="text-3xl font-serif text-center mb-2">Speak your situation.</h2>
           <p className="text-muted-foreground text-center max-w-md mb-10">
-            Eviction, wrongful firing, contract dispute, police encounter — say it
-            in your own words. CourtVoice will respond.
+            Eviction, wrongful firing, contract dispute, police encounter — say it in your own
+            words. CourtVoice will respond.
           </p>
 
           <StatusRing
@@ -132,24 +139,16 @@ function CourtVoiceApp() {
             disabled={disabled}
           />
 
-          {v.error && (
-            <p className="mt-6 text-sm text-destructive text-center">{v.error}</p>
-          )}
+          {v.error && <p className="mt-6 text-sm text-destructive text-center">{v.error}</p>}
 
-          <div
-            ref={feedRef}
-            className="mt-10 w-full max-h-80 overflow-y-auto space-y-4 pr-2"
-          >
+          <div ref={feedRef} className="mt-10 w-full max-h-80 overflow-y-auto space-y-4 pr-2">
             {v.messages.length === 0 && (
               <p className="text-center text-sm text-muted-foreground italic">
                 Your conversation will appear here.
               </p>
             )}
             {v.messages.map((m, i) => (
-              <div
-                key={i}
-                className={`flex gap-3 ${m.role === "user" ? "justify-end" : "justify-start"}`}
-              >
+              <div key={i} className={`flex gap-3 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                 {m.role === "assistant" && (
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
                     <Scale className="h-4 w-4" />
@@ -207,8 +206,8 @@ function CourtVoiceApp() {
             </pre>
           ) : (
             <div className="flex-1 rounded-lg border border-dashed border-border/70 flex items-center justify-center p-8 text-center text-sm text-muted-foreground italic">
-              When CourtVoice has enough information, a formal letter will appear
-              here — ready to read aloud, copy, or print.
+              When CourtVoice has enough information, a formal letter will appear here — ready to
+              read aloud, copy, or print.
             </div>
           )}
         </aside>
@@ -217,10 +216,9 @@ function CourtVoiceApp() {
       <footer className="border-t border-border/60 py-6 text-center text-xs text-muted-foreground">
         Always consult a qualified lawyer for serious legal matters.
       </footer>
+
+      <UserProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </main>
   );
-}
-
-function Index() {
-  return <CourtVoiceApp />;
 }
