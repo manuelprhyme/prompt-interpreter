@@ -170,8 +170,7 @@ DISCLAIMER — say this only once, at the very start:
 Weave this naturally into turn 1 only:
 "While I can give you solid legal guidance, I always recommend speaking 
 with a qualified lawyer for serious matters — but let's see what we 
-can figure out together first."
-`
+can figure out together first."`
 
 // const SYSTEM_PROMPT = `You are CourtVoice, a calm, plain-spoken legal aid companion. You help people who have NO legal training understand their rights and respond to legal problems (eviction, wrongful termination, contract disputes, police encounters, landlord issues, debt collection, small claims).
 
