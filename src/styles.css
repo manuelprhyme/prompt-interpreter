@@ -148,5 +148,57 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: 'Inter', system-ui, sans-serif;
+    background-image: var(--gradient-hero);
+    background-attachment: fixed;
+    min-height: 100vh;
   }
+
+  h1, h2, h3, .font-serif {
+    font-family: 'Playfair Display', Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+}
+
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.74 0.13 80 / 0.7), 0 0 60px oklch(0.74 0.13 80 / 0.3); }
+  50% { box-shadow: 0 0 0 24px oklch(0.74 0.13 80 / 0), 0 0 80px oklch(0.74 0.13 80 / 0.5); }
+}
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.62 0.22 25 / 0.8), 0 0 60px oklch(0.62 0.22 25 / 0.4); }
+  50% { box-shadow: 0 0 0 28px oklch(0.62 0.22 25 / 0), 0 0 90px oklch(0.62 0.22 25 / 0.6); }
+}
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.5); }
+  50% { transform: scaleY(1.4); }
+}
+
+.mic-idle { animation: pulse-gold 2.4s ease-in-out infinite; }
+.mic-listening { animation: pulse-red 1s ease-in-out infinite; }
+.mic-thinking::after {
+  content: '';
+  position: absolute; inset: -10px;
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  border-top-color: oklch(0.7 0.15 230);
+  border-right-color: oklch(0.7 0.15 230);
+  animation: spin-slow 1s linear infinite;
+}
+.wave-bar {
+  display: inline-block; width: 4px; height: 22px;
+  margin: 0 2px; background: oklch(0.74 0.16 150); border-radius: 2px;
+  animation: wave 0.9s ease-in-out infinite;
+}
+.wave-bar:nth-child(2){ animation-delay: 0.1s; }
+.wave-bar:nth-child(3){ animation-delay: 0.2s; }
+.wave-bar:nth-child(4){ animation-delay: 0.3s; }
+.wave-bar:nth-child(5){ animation-delay: 0.4s; }
+
+.paper {
+  background: oklch(0.96 0.02 85);
+  color: oklch(0.2 0.02 265);
+  background-image:
+    repeating-linear-gradient(transparent 0 31px, oklch(0.85 0.04 265 / 0.4) 31px 32px);
+  font-family: 'Playfair Display', Georgia, serif;
 }
