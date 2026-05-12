@@ -1,0 +1,224 @@
+import { useEffect, useRef, useState } from "react";
+import { Mic, Scale, Copy, Volume2, Pencil, Settings as SettingsIcon } from "lucide-react";
+import { useVoiceConversation } from "@/hooks/useVoiceConversation.js";
+import { useUserProfile } from "@/context/UserProfileContext.jsx";
+import { hasAllKeys } from "@/lib/keys.js";
+import UserProfileModal from "@/components/UserProfileModal.jsx";
+import SettingsDialog from "@/components/SettingsDialog.jsx";
+
+function StatusRing({ isListening, isThinking, isSpeaking, onPointerDown, onPointerUp, disabled }) {
+  const cls = isListening
+    ? "mic-listening"
+    : isThinking
+    ? "mic-thinking"
+    : isSpeaking
+    ? ""
+    : "mic-idle";
+
+  return (
+    <div className="relative flex flex-col items-center gap-6">
+      <button
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+        onPointerLeave={() => isListening && onPointerUp()}
+        disabled={disabled}
+        aria-label="Press and hold to speak"
+        className={`relative flex h-44 w-44 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${cls}`}
+        style={{ boxShadow: "var(--shadow-gold)" }}
+      >
+        <Mic className="h-16 w-16" strokeWidth={1.6} />
+      </button>
+      <div className="h-6 flex items-center justify-center gap-1 text-sm uppercase tracking-[0.2em] text-muted-foreground">
+        {isListening && <span className="text-destructive">● Listening — release to send</span>}
+        {isThinking && <span>Thinking…</span>}
+        {isSpeaking && (
+          <span className="flex items-center gap-2">
+            Speaking
+            <span className="flex items-end h-6">
+              <span className="wave-bar" />
+              <span className="wave-bar" />
+              <span className="wave-bar" />
+              <span className="wave-bar" />
+              <span className="wave-bar" />
+            </span>
+          </span>
+        )}
+        {!isListening && !isThinking && !isSpeaking && <span>Press &amp; hold to speak</span>}
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  const { userProfile } = useUserProfile();
+  const v = useVoiceConversation();
+  const feedRef = useRef(null);
+
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // First load: open settings if missing keys, then onboarding modal.
+  useEffect(() => {
+    if (!hasAllKeys()) {
+      setSettingsOpen(true);
+    } else if (!userProfile.profileComplete) {
+      setProfileOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // After settings closes, if profile not complete, prompt onboarding.
+  useEffect(() => {
+    if (!settingsOpen && hasAllKeys() && !userProfile.profileComplete) {
+      setProfileOpen(true);
+    }
+  }, [settingsOpen, userProfile.profileComplete]);
+
+  useEffect(() => {
+    feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight, behavior: "smooth" });
+  }, [v.messages, v.isThinking]);
+
+  const disabled = v.isSpeaking || v.isThinking || profileOpen || settingsOpen;
+
+  return (
+    <main className="min-h-screen text-foreground">
+      <header className="mx-auto max-w-6xl px-6 pt-10 pb-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <Scale className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl leading-none">CourtVoice</h1>
+            <p className="text-xs text-muted-foreground mt-1 tracking-wide">
+              Your rights. Your voice. No lawyer required.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {v.category && (
+            <span className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs uppercase tracking-widest text-primary">
+              {v.category}
+            </span>
+          )}
+          {userProfile.profileComplete && (
+            <span className="hidden sm:inline text-xs text-muted-foreground">
+              {userProfile.name}
+            </span>
+          )}
+          <button
+            onClick={() => setProfileOpen(true)}
+            title="Edit profile"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            title="API keys"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary"
+          >
+            <SettingsIcon className="h-4 w-4" />
+          </button>
+        </div>
+      </header>
+
+      <section className="mx-auto max-w-6xl px-6 grid gap-8 lg:grid-cols-[1.1fr_1fr] pb-16">
+        <div className="rounded-2xl border border-border bg-card/60 backdrop-blur p-8 flex flex-col items-center">
+          <h2 className="text-3xl font-serif text-center mb-2">Speak your situation.</h2>
+          <p className="text-muted-foreground text-center max-w-md mb-10">
+            Eviction, wrongful firing, contract dispute, police encounter — say it in your own
+            words. CourtVoice will respond.
+          </p>
+
+          <StatusRing
+            isListening={v.isListening}
+            isThinking={v.isThinking}
+            isSpeaking={v.isSpeaking}
+            onPointerDown={v.startListening}
+            onPointerUp={v.stopListening}
+            disabled={disabled}
+          />
+
+          {v.error && <p className="mt-6 text-sm text-destructive text-center">{v.error}</p>}
+
+          <div ref={feedRef} className="mt-10 w-full max-h-80 overflow-y-auto space-y-4 pr-2">
+            {v.messages.length === 0 && (
+              <p className="text-center text-sm text-muted-foreground italic">
+                Your conversation will appear here.
+              </p>
+            )}
+            {v.messages.map((m, i) => (
+              <div key={i} className={`flex gap-3 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                {m.role === "assistant" && (
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                    <Scale className="h-4 w-4" />
+                  </div>
+                )}
+                <div
+                  className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm leading-relaxed ${
+                    m.role === "user"
+                      ? "bg-primary text-primary-foreground rounded-br-sm"
+                      : "bg-secondary text-secondary-foreground rounded-bl-sm"
+                  }`}
+                >
+                  {m.content}
+                </div>
+              </div>
+            ))}
+            {v.isThinking && (
+              <div className="flex gap-3 justify-start">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary">
+                  <Scale className="h-4 w-4" />
+                </div>
+                <div className="rounded-2xl rounded-bl-sm bg-secondary px-4 py-2 text-sm text-muted-foreground">
+                  Considering your case…
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <aside className="rounded-2xl border border-border bg-card/60 backdrop-blur p-6 flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-serif text-xl">Drafted Letter</h3>
+            {v.letter && (
+              <div className="flex gap-2">
+                <button
+                  onClick={v.readLetterAloud}
+                  disabled={disabled}
+                  className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                >
+                  <Volume2 className="h-3.5 w-3.5" /> Read aloud
+                </button>
+                <button
+                  onClick={v.copyLetter}
+                  className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                >
+                  <Copy className="h-3.5 w-3.5" /> Copy
+                </button>
+              </div>
+            )}
+          </div>
+
+          {v.letter ? (
+            <pre className="paper flex-1 whitespace-pre-wrap rounded-lg p-6 text-sm leading-8 shadow-inner overflow-y-auto max-h-[28rem]">
+              {v.letter.replace(/\[DATE\]/g, new Date().toLocaleDateString())}
+            </pre>
+          ) : (
+            <div className="flex-1 rounded-lg border border-dashed border-border/70 flex items-center justify-center p-8 text-center text-sm text-muted-foreground italic">
+              When CourtVoice has enough information, a formal letter will appear here — ready to
+              read aloud, copy, or print.
+            </div>
+          )}
+        </aside>
+      </section>
+
+      <footer className="border-t border-border/60 py-6 text-center text-xs text-muted-foreground">
+        Always consult a qualified lawyer for serious legal matters.
+      </footer>
+
+      <UserProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+    </main>
+  );
+}
