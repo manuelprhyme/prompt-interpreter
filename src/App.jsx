@@ -1,35 +1,35 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, Scale, Copy, Volume2, Pencil, Settings as SettingsIcon } from "lucide-react";
+import { Mic, MicOff, Scale, Copy, Volume2, Pencil, Settings as SettingsIcon, Download, Mail } from "lucide-react";
 import { useVoiceConversation } from "@/hooks/useVoiceConversation.js";
 import { useUserProfile } from "@/context/UserProfileContext.jsx";
 import { hasAllKeys } from "@/lib/keys.js";
 import UserProfileModal from "@/components/UserProfileModal.jsx";
 import SettingsDialog from "@/components/SettingsDialog.jsx";
 
-function StatusRing({ isListening, isThinking, isSpeaking, onPointerDown, onPointerUp, disabled }) {
+function StatusRing({ isActive, isListening, isThinking, isSpeaking, onToggle, disabled }) {
   const cls = isListening
     ? "mic-listening"
     : isThinking
     ? "mic-thinking"
     : isSpeaking
     ? ""
+    : isActive
+    ? "mic-listening"
     : "mic-idle";
 
   return (
     <div className="relative flex flex-col items-center gap-6">
       <button
-        onPointerDown={onPointerDown}
-        onPointerUp={onPointerUp}
-        onPointerLeave={() => isListening && onPointerUp()}
+        onClick={onToggle}
         disabled={disabled}
-        aria-label="Press and hold to speak"
+        aria-label={isActive ? "Stop conversation" : "Start conversation"}
         className={`relative flex h-44 w-44 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${cls}`}
         style={{ boxShadow: "var(--shadow-gold)" }}
       >
-        <Mic className="h-16 w-16" strokeWidth={1.6} />
+        {isActive ? <MicOff className="h-16 w-16" strokeWidth={1.6} /> : <Mic className="h-16 w-16" strokeWidth={1.6} />}
       </button>
       <div className="h-6 flex items-center justify-center gap-1 text-sm uppercase tracking-[0.2em] text-muted-foreground">
-        {isListening && <span className="text-destructive">● Listening — release to send</span>}
+        {isListening && <span className="text-destructive">● Listening…</span>}
         {isThinking && <span>Thinking…</span>}
         {isSpeaking && (
           <span className="flex items-center gap-2">
@@ -43,7 +43,8 @@ function StatusRing({ isListening, isThinking, isSpeaking, onPointerDown, onPoin
             </span>
           </span>
         )}
-        {!isListening && !isThinking && !isSpeaking && <span>Press &amp; hold to speak</span>}
+        {isActive && !isListening && !isThinking && !isSpeaking && <span>Waiting for you…</span>}
+        {!isActive && <span>Click to start</span>}
       </div>
     </div>
   );
@@ -57,7 +58,6 @@ export default function App() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // First load: open settings if missing keys, then onboarding modal.
   useEffect(() => {
     if (!hasAllKeys()) {
       setSettingsOpen(true);
@@ -67,7 +67,6 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // After settings closes, if profile not complete, prompt onboarding.
   useEffect(() => {
     if (!settingsOpen && hasAllKeys() && !userProfile.profileComplete) {
       setProfileOpen(true);
@@ -78,7 +77,7 @@ export default function App() {
     feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight, behavior: "smooth" });
   }, [v.messages, v.isThinking]);
 
-  const disabled = v.isSpeaking || v.isThinking || profileOpen || settingsOpen;
+  const disabled = profileOpen || settingsOpen;
 
   return (
     <main className="min-h-screen text-foreground">
@@ -131,11 +130,11 @@ export default function App() {
           </p>
 
           <StatusRing
+            isActive={v.isActive}
             isListening={v.isListening}
             isThinking={v.isThinking}
             isSpeaking={v.isSpeaking}
-            onPointerDown={v.startListening}
-            onPointerUp={v.stopListening}
+            onToggle={v.toggleConversation}
             disabled={disabled}
           />
 
@@ -179,37 +178,49 @@ export default function App() {
         </div>
 
         <aside className="rounded-2xl border border-border bg-card/60 backdrop-blur p-6 flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-serif text-xl">Drafted Letter</h3>
-            {v.letter && (
-              <div className="flex gap-2">
-                <button
-                  onClick={v.readLetterAloud}
-                  disabled={disabled}
-                  className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-                >
-                  <Volume2 className="h-3.5 w-3.5" /> Read aloud
-                </button>
-                <button
-                  onClick={v.copyLetter}
-                  className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-medium hover:bg-muted"
-                >
-                  <Copy className="h-3.5 w-3.5" /> Copy
-                </button>
-              </div>
-            )}
-          </div>
+          <h3 className="font-serif text-xl mb-4">Drafted Letter</h3>
 
           {v.letter ? (
-            <pre className="paper flex-1 whitespace-pre-wrap rounded-lg p-6 text-sm leading-8 shadow-inner overflow-y-auto max-h-[28rem]">
+            <pre className="paper flex-1 whitespace-pre-wrap rounded-lg p-6 text-sm leading-8 shadow-inner overflow-y-auto max-h-[28rem] mb-4">
               {v.letter.replace(/\[DATE\]/g, new Date().toLocaleDateString())}
             </pre>
           ) : (
-            <div className="flex-1 rounded-lg border border-dashed border-border/70 flex items-center justify-center p-8 text-center text-sm text-muted-foreground italic">
+            <div className="flex-1 rounded-lg border border-dashed border-border/70 flex items-center justify-center p-8 text-center text-sm text-muted-foreground italic mb-4">
               When CourtVoice has enough information, a formal letter will appear here — ready to
-              read aloud, copy, or print.
+              read aloud, copy, download, or send by email.
             </div>
           )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={v.readLetterAloud}
+              disabled={!v.letter || v.isSpeaking || v.isThinking}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Volume2 className="h-3.5 w-3.5" /> Read aloud
+            </button>
+            <button
+              onClick={v.copyLetter}
+              disabled={!v.letter}
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-xs font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Copy className="h-3.5 w-3.5" /> Copy
+            </button>
+            <button
+              onClick={v.downloadLetter}
+              disabled={!v.letter}
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-xs font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Download className="h-3.5 w-3.5" /> Download
+            </button>
+            <button
+              onClick={v.emailLetter}
+              disabled={!v.letter}
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-xs font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Mail className="h-3.5 w-3.5" /> Email
+            </button>
+          </div>
         </aside>
       </section>
 

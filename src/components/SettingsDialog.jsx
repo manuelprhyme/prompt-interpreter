@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Key } from "lucide-react";
 import {
   getElevenLabsKey, setElevenLabsKey,
-  getGeminiKey, setGeminiKey,
+  getGroqKey, setGroqKey,
 } from "@/lib/keys.js";
 
 export default function SettingsDialog({ open, onClose }) {
@@ -12,7 +12,7 @@ export default function SettingsDialog({ open, onClose }) {
   useEffect(() => {
     if (open) {
       setEl(getElevenLabsKey());
-      setGm(getGeminiKey());
+      setGm(getGroqKey());
     }
   }, [open]);
 
@@ -20,7 +20,7 @@ export default function SettingsDialog({ open, onClose }) {
 
   const save = () => {
     setElevenLabsKey(el.trim());
-    setGeminiKey(gm.trim());
+    setGroqKey(gm.trim());
     onClose?.();
   };
 
@@ -32,7 +32,7 @@ export default function SettingsDialog({ open, onClose }) {
           <h2 className="font-serif text-2xl">API Keys</h2>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
-          Keys are stored in your browser only. They are sent directly to ElevenLabs and Google
+          Keys are stored in your browser only. They are sent directly to ElevenLabs and Groq
           from this page. Do not use a key you would not paste into a public site.
         </p>
 
@@ -48,13 +48,13 @@ export default function SettingsDialog({ open, onClose }) {
         />
 
         <label className="text-xs uppercase tracking-widest text-muted-foreground">
-          Google Gemini API Key
+          Groq API Key
         </label>
         <input
           type="password"
           value={gm}
           onChange={(e) => setGm(e.target.value)}
-          placeholder="AIza..."
+          placeholder="gsk_..."
           className="mt-1 mb-6 w-full rounded-md border border-border bg-input px-3 py-2 text-sm"
         />
 

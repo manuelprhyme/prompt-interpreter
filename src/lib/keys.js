@@ -1,5 +1,5 @@
 const ELEVEN_KEY = "courtvoice.elevenlabsKey";
-const LLM_KEY = "courtvoice.geminiKey";
+const LLM_KEY = "courtvoice.groqKey";
 
 export function getElevenLabsKey() {
   return localStorage.getItem(ELEVEN_KEY) || "";
@@ -7,12 +7,12 @@ export function getElevenLabsKey() {
 export function setElevenLabsKey(v) {
   localStorage.setItem(ELEVEN_KEY, v);
 }
-export function getGeminiKey() {
+export function getGroqKey() {
   return localStorage.getItem(LLM_KEY) || "";
 }
-export function setGeminiKey(v) {
+export function setGroqKey(v) {
   localStorage.setItem(LLM_KEY, v);
 }
 export function hasAllKeys() {
-  return !!getElevenLabsKey() && !!getGeminiKey();
+  return !!getElevenLabsKey() && !!getGroqKey();
 }
