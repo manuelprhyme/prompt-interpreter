@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sttTranscribe, ttsSpeak } from "@/lib/elevenlabs";
 import { legalChat } from "@/lib/llm";
-import { useUserProfile } from "@/context/UserProfileContext.jsx";
-
 function parseReply(raw) {
   let text = raw;
   let category = null;
@@ -25,7 +23,6 @@ const SILENCE_DURATION  = 1500; // ms of silence before auto-submit
 const MIN_SPEECH_MS     = 400;  // ignore clips shorter than this
 
 export function useVoiceConversation() {
-  const { userProfile } = useUserProfile();
   const [messages, setMessages] = useState([]);
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -70,7 +67,7 @@ export function useVoiceConversation() {
       messagesRef.current = next;
       setIsThinking(true);
       try {
-        const reply = await legalChat(next, userProfile);
+        const reply = await legalChat(next, null);
         const parsed = parseReply(reply);
         const updated = [...next, { role: "assistant", content: parsed.spoken || reply }];
         setMessages(updated);
@@ -87,7 +84,7 @@ export function useVoiceConversation() {
       // restart mic if session still active
       if (activeRef.current) startMic();
     },
-    [playTTS, userProfile]
+    [playTTS]
   );
 
   // Stop the recorder and process the audio chunk

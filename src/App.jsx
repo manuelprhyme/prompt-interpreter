@@ -1,12 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Scale, Copy, Volume2, Pencil, Settings as SettingsIcon, Download, Mail } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Mic, MicOff, Scale, Copy, Volume2, Download, Mail } from "lucide-react";
 import { useVoiceConversation } from "@/hooks/useVoiceConversation.js";
-import { useUserProfile } from "@/context/UserProfileContext.jsx";
-import { hasAllKeys } from "@/lib/keys.js";
-import UserProfileModal from "@/components/UserProfileModal.jsx";
-import SettingsDialog from "@/components/SettingsDialog.jsx";
 
-function StatusRing({ isActive, isListening, isThinking, isSpeaking, onToggle, disabled }) {
+function StatusRing({ isActive, isListening, isThinking, isSpeaking, onToggle }) {
   const cls = isListening
     ? "mic-listening"
     : isThinking
@@ -21,9 +17,8 @@ function StatusRing({ isActive, isListening, isThinking, isSpeaking, onToggle, d
     <div className="relative flex flex-col items-center gap-6">
       <button
         onClick={onToggle}
-        disabled={disabled}
         aria-label={isActive ? "Stop conversation" : "Start conversation"}
-        className={`relative flex h-44 w-44 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${cls}`}
+        className={`relative flex h-44 w-44 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-95 ${cls}`}
         style={{ boxShadow: "var(--shadow-gold)" }}
       >
         {isActive ? <MicOff className="h-16 w-16" strokeWidth={1.6} /> : <Mic className="h-16 w-16" strokeWidth={1.6} />}
@@ -51,33 +46,12 @@ function StatusRing({ isActive, isListening, isThinking, isSpeaking, onToggle, d
 }
 
 export default function App() {
-  const { userProfile } = useUserProfile();
   const v = useVoiceConversation();
   const feedRef = useRef(null);
-
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-
-  useEffect(() => {
-    if (!hasAllKeys()) {
-      setSettingsOpen(true);
-    } else if (!userProfile.profileComplete) {
-      setProfileOpen(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!settingsOpen && hasAllKeys() && !userProfile.profileComplete) {
-      setProfileOpen(true);
-    }
-  }, [settingsOpen, userProfile.profileComplete]);
 
   useEffect(() => {
     feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight, behavior: "smooth" });
   }, [v.messages, v.isThinking]);
-
-  const disabled = profileOpen || settingsOpen;
 
   return (
     <main className="min-h-screen text-foreground">
@@ -93,32 +67,11 @@ export default function App() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {v.category && (
-            <span className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs uppercase tracking-widest text-primary">
-              {v.category}
-            </span>
-          )}
-          {userProfile.profileComplete && (
-            <span className="hidden sm:inline text-xs text-muted-foreground">
-              {userProfile.name}
-            </span>
-          )}
-          <button
-            onClick={() => setProfileOpen(true)}
-            title="Edit profile"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary"
-          >
-            <Pencil className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            title="API keys"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-primary hover:border-primary"
-          >
-            <SettingsIcon className="h-4 w-4" />
-          </button>
-        </div>
+        {v.category && (
+          <span className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs uppercase tracking-widest text-primary">
+            {v.category}
+          </span>
+        )}
       </header>
 
       <section className="mx-auto max-w-6xl px-6 grid gap-8 lg:grid-cols-[1.1fr_1fr] pb-16">
@@ -135,7 +88,6 @@ export default function App() {
             isThinking={v.isThinking}
             isSpeaking={v.isSpeaking}
             onToggle={v.toggleConversation}
-            disabled={disabled}
           />
 
           {v.error && <p className="mt-6 text-sm text-destructive text-center">{v.error}</p>}
@@ -227,9 +179,6 @@ export default function App() {
       <footer className="border-t border-border/60 py-6 text-center text-xs text-muted-foreground">
         Always consult a qualified lawyer for serious legal matters.
       </footer>
-
-      <UserProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
-      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </main>
   );
 }
